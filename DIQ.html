@@ -1,0 +1,166 @@
+<!DO<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RSS Feed Example</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Montserrat:wght@500&display=swap">
+<style>
+  /* Add custom styles here */
+  body {
+    margin: 20px; /* Add margin on either side */
+    background-color: #fff; /* White background */
+    color: #000; /* Black text color */
+  }
+  .rss-item {
+    margin-bottom: 40px; /* Increase distance between each square */
+    padding: 20px;
+    border-radius: 10px;
+    background: linear-gradient(180deg, #ffffff, #f3f3f3); /* Gradient background */
+    position: relative;
+    color: #000; /* Black text color */
+    display: flex; /* Display items in a row */
+    align-items: center; /* Center items vertically */
+  }
+  .rss-item img {
+    width: 120px; /* Set the width of the image */
+    height: auto; /* Maintain aspect ratio */
+    margin-right: 30px; /* Add space between the image and text */
+    border-radius: 10px; /* Rounded corners */
+  }
+  .rss-item h3 {
+    margin-top: 0;
+    font-weight: bold;
+    font-family: 'Inter', sans-serif;
+    text-transform: uppercase;
+    font-size: 20px; /* Increase font size */
+    color: #1b1b1b; /* Title color */
+  }
+  .rss-item p, .publication-date {
+    font-family: 'Inter', sans-serif;
+    font-weight: 400; /* Thin weight */
+    font-size: 16px; /* Increase font size */
+    color: #afafaf; /* Text color */
+  }
+  .audio-container {
+    position: relative;
+    margin-top: 20px; /* Additional space between description and audio player */
+  }
+  .audio-player {
+    position: absolute;
+    bottom: -50px; /* Move it even lower */
+    left: 0; /* Adjust positioning */
+    background-color: rgba(255, 255, 255, 0.7); /* Semi-opaque white */
+    border-radius: 5px;
+    padding: 5px;
+    width: 100%; /* Extend width to encompass the container */
+  }
+  .audio-square {
+    position: absolute;
+    bottom: -60px; /* Adjust to accommodate the player */
+    left: 0; /* Adjust to accommodate the player */
+    width: 100%; /* Extend width to encompass the container */
+    height: 60px; /* Adjust to accommodate the player and padding */
+    background-color: rgba(255, 255, 255, 1); /* Semi-opaque white */
+    border-radius: 5px;
+  }
+  .read-more {
+    font-weight: bold; /* Make read more button bold */
+  }
+  .load-more-btn {
+    background-color: #ec222e;
+    color: #fff;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+    font-weight: bold;
+    font-size: 16px;
+    position: relative;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-top: 20px;
+  }
+  .load-more-btn:hover {
+    background-color: #ff395d;
+  }
+</style>
+</head>
+<body>
+<div id="rss-feed"></div>
+
+<script>
+// Global variables to keep track of loaded episodes
+let startIndex = 0;
+const episodesPerPage = 10;
+
+// Function to fetch and display RSS feed
+function fetchRSSFeed() {
+  fetch('https://feeds.simplecast.com/vDtVrAj9')
+    .then(response => response.text())
+    .then(data => {
+      // Parse XML
+      const parser = new DOMParser();
+      const xml = parser.parseFromString(data, 'application/xml');
+
+      // Use the podcast image link
+      const podcastImage = 'https://www.ceu.edu/sites/default/files/styles/panopoly_image_full/public/general/diq_new_visual.png?itok=zgU_QvfR';
+
+      // Extract items from RSS feed
+      const items = Array.from(xml.querySelectorAll('item'));
+      const episodes = items.map(item => ({
+        title: item.querySelector('title').textContent,
+        description: item.querySelector('itunes\\:summary, summary').textContent,
+        link: item.querySelector('link').textContent,
+        audioLink: item.querySelector('enclosure').getAttribute('url'),
+        date: new Date(item.querySelector('pubDate').textContent)
+      }));
+
+      // Sort episodes by date (descending)
+      episodes.sort((a, b) => b.date - a.date);
+
+      // Display feed on the page
+      let feedHTML = '';
+      episodes.slice(startIndex, startIndex + episodesPerPage).forEach(episode => {
+        const description = episode.description.length > 280 ? episode.description.substring(0, 280) + '...' : episode.description;
+        const formattedDate = episode.date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+        feedHTML += `
+          <div class="rss-item">
+            <img src="${podcastImage}" alt="Podcast Image">
+            <div>
+              <div class="publication-date">${formattedDate}</div>
+              <h3>${episode.title}</h3>
+              <p>${description} <span class="read-more" onclick="window.open('${episode.link}', '_blank')">Read more</span></p>
+              <div class="audio-container">
+                <div class="audio-square"></div> <!-- Add square around the player -->
+                <audio class="audio-player" controls>
+                  <source src="${episode.audioLink}" type="audio/mpeg">
+                  Your browser does not support the audio element.
+                </audio>
+              </div>
+            </div>
+          </div>
+        `;
+      });
+      feedHTML += `<button class="load-more-btn" onclick="loadMoreEpisodes()">Previous season</button>`;
+      document.getElementById('rss-feed').innerHTML = feedHTML;
+    })
+    .catch(error => console.error('Error fetching or parsing RSS feed:', error));
+}
+
+// Function to load more episodes
+function loadMoreEpisodes() {
+  startIndex += episodesPerPage;
+  fetchRSSFeed();
+}
+
+// Call fetchRSSFeed initially
+fetchRSSFeed();
+
+// Schedule fetching the RSS feed every 10 minutes
+setInterval(fetchRSSFeed, 10 * 60 * 1000); // 10 minutes in milliseconds
+</script>
+</body>
+</html>
+
